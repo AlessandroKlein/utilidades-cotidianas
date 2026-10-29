@@ -13,9 +13,19 @@ Cada herramienta vive en su propia carpeta con su código y su `README.md` expli
 | [`ppt-a-pdf`](ppt-a-pdf/) | Convierte todos los `.ppt` / `.pptx` de una carpeta a PDF (usa PowerPoint instalado). |
 | [`renombrar-masivo`](renombrar-masivo/) | Renombra archivos en lote: prefijo/sufijo, numeración, buscar-reemplazar y normalización de nombres. |
 
+## Lanzador gráfico 🖱️
+
+[`lanzador.py`](lanzador.py) reúne todas las herramientas en una sola ventana (tkinter, sin dependencias extra): elegís la herramienta, la carpeta/archivo y los argumentos, y ves la salida en vivo. Descubre las herramientas solas (cada carpeta = una herramienta), así que las nuevas aparecen sin tocarlo.
+
+```powershell
+python lanzador.py
+```
+
+> Usa el mismo Python de tu sistema (el de `sys.executable`), así las dependencias ya instaladas (como `pywin32` para `ppt-a-pdf`) están disponibles.
+
 ## Cómo usar
 
-Entrá en la carpeta de la herramienta que necesites y seguí las instrucciones de su `README.md`.
+Entrá en la carpeta de la herramienta que necesites y seguí las instrucciones de su `README.md`, o abrí el [lanzador](lanzador.py) y elegila desde ahí.
 
 ## Agregar una herramienta nueva
 
