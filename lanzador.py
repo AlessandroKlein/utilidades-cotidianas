@@ -5,23 +5,92 @@ Una ventana única que descubre automáticamente las herramientas del repo
 (cada subcarpeta con un único script .py) y las ejecuta con una ruta de
 destino + argumentos extra, mostrando la salida en vivo.
 
+Sigue el tema claro/oscuro del sistema (Windows) y usa una paleta de colores
+moderna, todo con tkinter (sin dependencias externas).
+
 Uso:
     python lanzador.py            # abre la ventana
     python lanzador.py --selftest # lista las herramientas detectadas (sin ventana)
-
-Sin dependencias externas: usa tkinter, incluido en la instalación estándar
-de Python para Windows.
 """
 import os
+import platform
 import shlex
 import subprocess
 import sys
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, ttk
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 PYTHON = sys.executable
+
+FONT_UI = ("Segoe UI", 10)
+FONT_TITLE = ("Segoe UI", 18, "bold")
+FONT_SUB = ("Segoe UI", 10)
+FONT_MONO = ("Consolas", 9)
+
+PALETTES = {
+    "light": {
+        "window": "#eef1f6",
+        "panel": "#ffffff",
+        "field": "#ffffff",
+        "text": "#1c2430",
+        "title": "#111827",
+        "muted": "#6b7280",
+        "border": "#dbe0e7",
+        "accent": "#2563eb",
+        "accent_hover": "#1d4ed8",
+        "accent_fg": "#ffffff",
+        "button": "#f2f4f8",
+        "button_hover": "#e4e9f2",
+        "disabled": "#dfe3ea",
+        "disabled_fg": "#98a1ad",
+        "trough": "#e9ecf2",
+        "scrollbar": "#c6ccd6",
+        "scrollbar_hover": "#aab3c0",
+        "output_bg": "#f8fafc",
+        "output_fg": "#1c2430",
+    },
+    "dark": {
+        "window": "#0e1116",
+        "panel": "#161b23",
+        "field": "#1c222c",
+        "text": "#e7eaef",
+        "title": "#ffffff",
+        "muted": "#98a2b1",
+        "border": "#2a323d",
+        "accent": "#3b82f6",
+        "accent_hover": "#2563eb",
+        "accent_fg": "#ffffff",
+        "button": "#222936",
+        "button_hover": "#2c3443",
+        "disabled": "#252b35",
+        "disabled_fg": "#5b6471",
+        "trough": "#1b212a",
+        "scrollbar": "#343c49",
+        "scrollbar_hover": "#434d5c",
+        "output_bg": "#12161c",
+        "output_fg": "#e7eaef",
+    },
+}
+
+
+def detect_system_dark():
+    """True si el sistema usa tema oscuro (Windows). Fallback: claro."""
+    if platform.system() == "Windows":
+        try:
+            import winreg
+
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+            )
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            winreg.CloseKey(key)
+            return value == 0
+        except OSError:
+            return False
+    return False
 
 
 def discover_tools(root):
@@ -77,85 +146,169 @@ class App:
             root.destroy()
             return
 
+        self.c = PALETTES["dark" if detect_system_dark() else "light"]
         self.by_display = {
             humanize(name): script for name, script in self.tools
         }
 
         root.title("Utilidades Cotidianas — Lanzador")
-        root.geometry("780x560")
-        root.minsize(640, 460)
+        root.geometry("780x600")
+        root.minsize(640, 500)
+        root.configure(bg=self.c["window"])
 
-        pad = {"padx": 10, "pady": 4}
+        self._build_style()
+        self._build_header()
+        self._build_card()
+        self._build_output()
+        self._on_tool()
 
-        # Herramienta
-        ttk.Label(root, text="Herramienta:").grid(
-            row=0, column=0, sticky="w", **pad
+    # ------------------------------------------------------------------ tema
+    def _build_style(self):
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+        c = self.c
+
+        style.configure(".", background=c["panel"], foreground=c["text"],
+                        bordercolor=c["border"], lightcolor=c["border"],
+                        darkcolor=c["border"], troughcolor=c["trough"],
+                        focuscolor=c["accent"], font=FONT_UI)
+        style.configure("TFrame", background=c["panel"])
+        style.configure("TLabel", background=c["panel"], foreground=c["text"])
+        style.configure("Muted.TLabel", foreground=c["muted"])
+        style.configure("TEntry", fieldbackground=c["field"],
+                        foreground=c["text"], insertcolor=c["text"],
+                        bordercolor=c["border"], lightcolor=c["border"],
+                        darkcolor=c["border"])
+        style.configure(
+            "TCombobox",
+            fieldbackground=c["field"], background=c["field"],
+            foreground=c["text"], arrowcolor=c["text"],
+            bordercolor=c["border"], lightcolor=c["border"],
+            darkcolor=c["border"],
         )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", c["field"])],
+            foreground=[("readonly", c["text"])],
+            selectbackground=[("readonly", c["field"])],
+            selectforeground=[("readonly", c["text"])],
+        )
+        style.configure("TButton", background=c["button"],
+                        foreground=c["text"], borderwidth=0,
+                        focusthickness=0, padding=(10, 6))
+        style.map("TButton",
+                  background=[("active", c["button_hover"]),
+                              ("pressed", c["button_hover"])])
+        style.configure("Accent.TButton", background=c["accent"],
+                        foreground=c["accent_fg"], borderwidth=0,
+                        focusthickness=0, padding=(10, 9),
+                        font=("Segoe UI", 11, "bold"))
+        style.map("Accent.TButton",
+                  background=[("active", c["accent_hover"]),
+                              ("pressed", c["accent_hover"]),
+                              ("disabled", c["disabled"])],
+                  foreground=[("disabled", c["disabled_fg"])])
+        style.configure("Vertical.TScrollbar", background=c["scrollbar"],
+                        troughcolor=c["trough"], bordercolor=c["trough"],
+                        arrowcolor=c["muted"])
+        style.map("Vertical.TScrollbar",
+                  background=[("active", c["scrollbar_hover"])])
+
+    # -------------------------------------------------------------- widgets
+    def _build_header(self):
+        c = self.c
+        header = tk.Frame(self.root, bg=c["window"])
+        header.pack(fill="x", padx=24, pady=(18, 2))
+        tk.Label(header, text="Utilidades Cotidianas", bg=c["window"],
+                 fg=c["title"], font=FONT_TITLE).pack(anchor="w")
+        tk.Label(
+            header,
+            text="Elegí una herramienta, una carpeta o archivo, y ejecutá.",
+            bg=c["window"], fg=c["muted"], font=FONT_SUB,
+        ).pack(anchor="w", pady=(2, 0))
+
+    def _build_card(self):
+        c = self.c
+        card = tk.Frame(self.root, bg=c["panel"], highlightthickness=1,
+                        highlightbackground=c["border"])
+        card.pack(fill="x", padx=24, pady=(10, 8))
+        card.columnconfigure(1, weight=1)
+
+        pad = {"padx": 12, "pady": 6}
+
+        ttk.Label(card, text="Herramienta").grid(
+            row=0, column=0, sticky="w", **pad)
         self.tool_var = tk.StringVar()
         self.tool_combo = ttk.Combobox(
-            root, textvariable=self.tool_var, state="readonly",
-            values=list(self.by_display), width=48,
+            card, textvariable=self.tool_var, state="readonly",
+            values=list(self.by_display), width=42,
         )
-        self.tool_combo.grid(row=0, column=1, columnspan=2, sticky="ew", **pad)
+        self.tool_combo.grid(row=0, column=1, columnspan=2,
+                             sticky="ew", **pad)
         self.tool_combo.current(0)
         self.tool_combo.bind("<<ComboboxSelected>>", self._on_tool)
 
-        # Descripción
-        self.desc_label = ttk.Label(
-            root, text="", wraplength=740, foreground="#555"
-        )
-        self.desc_label.grid(row=1, column=0, columnspan=3, sticky="w", **pad)
+        self.desc_label = ttk.Label(card, text="", style="Muted.TLabel",
+                                    wraplength=700)
+        self.desc_label.grid(row=1, column=0, columnspan=3, sticky="w",
+                             padx=12, pady=(0, 4))
 
-        # Ruta de destino
-        ttk.Label(root, text="Carpeta/archivo:").grid(
-            row=2, column=0, sticky="w", **pad
-        )
+        ttk.Label(card, text="Carpeta/archivo").grid(
+            row=2, column=0, sticky="w", **pad)
         self.target_var = tk.StringVar()
-        ttk.Entry(root, textvariable=self.target_var).grid(
-            row=2, column=1, sticky="ew", **pad
-        )
-        btns = ttk.Frame(root)
+        ttk.Entry(card, textvariable=self.target_var).grid(
+            row=2, column=1, sticky="ew", **pad)
+        btns = ttk.Frame(card)
         btns.grid(row=2, column=2, sticky="e", **pad)
         ttk.Button(btns, text="Carpeta…", command=self._pick_folder).pack(
-            side="left", padx=(0, 4)
-        )
+            side="left", padx=(0, 6))
         ttk.Button(btns, text="Archivo…", command=self._pick_file).pack(
-            side="left"
-        )
+            side="left")
 
-        # Argumentos extra
-        ttk.Label(root, text="Argumentos extra:").grid(
-            row=3, column=0, sticky="w", **pad
-        )
+        ttk.Label(card, text="Argumentos").grid(
+            row=3, column=0, sticky="w", **pad)
         self.args_var = tk.StringVar()
-        ttk.Entry(root, textvariable=self.args_var).grid(
-            row=3, column=1, sticky="ew", **pad
+        ttk.Entry(card, textvariable=self.args_var).grid(
+            row=3, column=1, sticky="ew", **pad)
+        ttk.Label(card, text="opcional", style="Muted.TLabel").grid(
+            row=3, column=2, sticky="w", **pad)
+
+        self.run_btn = ttk.Button(card, text="Ejecutar",
+                                  style="Accent.TButton",
+                                  command=self.run_tool)
+        self.run_btn.grid(row=4, column=0, columnspan=3, sticky="ew",
+                          padx=12, pady=(10, 12))
+
+    def _build_output(self):
+        c = self.c
+        ttk.Label(self.root, text="Salida", style="Muted.TLabel").pack(
+            anchor="w", padx=24, pady=(0, 4))
+
+        out_frame = ttk.Frame(self.root)
+        out_frame.pack(fill="both", expand=True, padx=24, pady=(0, 6))
+
+        self.output = tk.Text(
+            out_frame, state="disabled", font=FONT_MONO,
+            bg=c["output_bg"], fg=c["output_fg"],
+            insertbackground=c["text"], selectbackground=c["accent"],
+            selectforeground=c["accent_fg"], relief="flat",
+            highlightthickness=1, highlightbackground=c["border"],
+            highlightcolor=c["accent"], padx=10, pady=8, wrap="word",
         )
-        ttk.Label(
-            root, text="opcional", foreground="#999"
-        ).grid(row=3, column=2, sticky="w", **pad)
-        ttk.Label(
-            root,
+        scroll = ttk.Scrollbar(out_frame, style="Vertical.TScrollbar",
+                               command=self.output.yview)
+        self.output.configure(yscrollcommand=scroll.set)
+        self.output.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        tk.Label(
+            self.root,
             text="Consejo: corré primero sin argumentos para ver el plan "
                  "(dry-run); para aplicar agregá --aplicar/--borrar y --si.",
-            wraplength=740, foreground="#555",
-        ).grid(row=4, column=0, columnspan=3, sticky="w", **pad)
+            bg=c["window"], fg=c["muted"], font=FONT_SUB,
+        ).pack(anchor="w", padx=24, pady=(2, 12))
 
-        # Botón ejecutar
-        self.run_btn = ttk.Button(root, text="Ejecutar", command=self.run_tool)
-        self.run_btn.grid(row=5, column=0, columnspan=3, sticky="ew", **pad)
-
-        # Salida
-        self.output = scrolledtext.ScrolledText(
-            root, height=18, state="disabled", font=("Consolas", 9)
-        )
-        self.output.grid(row=6, column=0, columnspan=3, sticky="nsew", **pad)
-
-        root.columnconfigure(1, weight=1)
-        root.rowconfigure(6, weight=1)
-
-        self._on_tool()
-
+    # ------------------------------------------------------------- acciones
     def _on_tool(self, _event=None):
         script = self.by_display.get(self.tool_var.get(), "")
         self.desc_label.configure(text=describe(script) if script else "")
