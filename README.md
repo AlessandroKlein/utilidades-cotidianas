@@ -8,7 +8,10 @@ Cada herramienta vive en su propia carpeta con su código y su `README.md` expli
 
 | Carpeta | Para qué sirve |
 |---|---|
+| [`buscar-duplicados`](buscar-duplicados/) | Encuentra archivos duplicados por contenido (hash `blake2b`) y muestra el espacio recuperable; con `--borrar` elimina las copias extra. |
+| [`organizar-descargas`](organizar-descargas/) | Mueve los archivos sueltos de Descargas a subcarpetas por tipo (Imágenes, Documentos, Música, Vídeos, Comprimidos, Instaladores, Otros). |
 | [`ppt-a-pdf`](ppt-a-pdf/) | Convierte todos los `.ppt` / `.pptx` de una carpeta a PDF (usa PowerPoint instalado). |
+| [`renombrar-masivo`](renombrar-masivo/) | Renombra archivos en lote: prefijo/sufijo, numeración, buscar-reemplazar y normalización de nombres. |
 
 ## Cómo usar
 
