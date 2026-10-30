@@ -66,12 +66,14 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--fila-hover); }
 td.nombre { word-break: break-all; }
 td.der { text-align: right; white-space: nowrap; color: var(--tenue); }
+a.descargar, a.ver { display: inline-block; vertical-align: middle; }
 a.descargar { color: var(--acento-texto); background: var(--acento); text-decoration: none;
   padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: .9rem; white-space: nowrap; }
 a.descargar:hover { filter: brightness(1.1); }
 a.ver { color: var(--acento); border: 1px solid var(--acento); text-decoration: none;
   padding: 6px 13px; border-radius: 8px; font-weight: 600; font-size: .9rem; white-space: nowrap; margin-left: 6px; }
 a.ver:hover { background: var(--fila-hover); }
+td.acciones { white-space: nowrap; text-align: right; }
 .vacio { padding: 34px; text-align: center; color: var(--tenue); }
 .pie { text-align: center; color: var(--tenue); font-size: .85rem; padding: 0 16px 34px; }
 </style>
@@ -173,7 +175,7 @@ class Manejador(BaseHTTPRequestHandler):
                 f'<td class="nombre">{nombre_esc}</td>'
                 f'<td class="der">{tam}</td>'
                 f'<td class="der">{fecha}</td>'
-                f'<td>{acciones}</td>'
+                f'<td class="acciones">{acciones}</td>'
                 f"</tr>"
             )
         cuerpo = "" if not filas else "\n".join(filas)
