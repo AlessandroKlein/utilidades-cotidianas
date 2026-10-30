@@ -12,6 +12,7 @@ Cada herramienta vive en su propia carpeta con su código y su `README.md` expli
 | [`organizar-descargas`](organizar-descargas/) | Mueve los archivos sueltos de Descargas a subcarpetas por tipo (Imágenes, Documentos, Música, Vídeos, Comprimidos, Instaladores, Otros). |
 | [`ppt-a-pdf`](ppt-a-pdf/) | Convierte todos los `.ppt` / `.pptx` de una carpeta a PDF (usa PowerPoint instalado). |
 | [`renombrar-masivo`](renombrar-masivo/) | Renombra archivos en lote: prefijo/sufijo, numeración, buscar-reemplazar y normalización de nombres. |
+| [`servidor-descargas`](servidor-descargas/) | Comparte una carpeta por la red local: los demás equipos descargan los archivos desde el navegador. |
 
 ## Lanzador gráfico 🖱️
 
