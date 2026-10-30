@@ -29,6 +29,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+# extensiones que se pueden previsualizar en el navegador (además de descargar)
+EXTENSIONES_TEXTO = {".txt", ".md", ".yml", ".yaml"}
+
 PAGINA = """<!doctype html>
 <html lang="es">
 <head>
@@ -66,6 +69,9 @@ td.der { text-align: right; white-space: nowrap; color: var(--tenue); }
 a.descargar { color: var(--acento-texto); background: var(--acento); text-decoration: none;
   padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: .9rem; white-space: nowrap; }
 a.descargar:hover { filter: brightness(1.1); }
+a.ver { color: var(--acento); border: 1px solid var(--acento); text-decoration: none;
+  padding: 6px 13px; border-radius: 8px; font-weight: 600; font-size: .9rem; white-space: nowrap; margin-left: 6px; }
+a.ver:hover { background: var(--fila-hover); }
 .vacio { padding: 34px; text-align: center; color: var(--tenue); }
 .pie { text-align: center; color: var(--tenue); font-size: .85rem; padding: 0 16px 34px; }
 </style>
@@ -136,6 +142,8 @@ class Manejador(BaseHTTPRequestHandler):
             self._servir_indice()
         elif ruta.path == "/descargar":
             self._servir_descarga(ruta.query)
+        elif ruta.path == "/ver":
+            self._servir_vista(ruta.query)
         elif ruta.path == "/favicon.ico":
             self.send_response(204)
             self.end_headers()
@@ -157,12 +165,15 @@ class Manejador(BaseHTTPRequestHandler):
             n += 1
             nombre_esc = html.escape(p.name)
             url = "/descargar?f=" + quote(p.name)
+            acciones = f'<a class="descargar" href="{url}">Descargar</a>'
+            if p.suffix.lower() in EXTENSIONES_TEXTO:
+                acciones += f' <a class="ver" href="/ver?f={quote(p.name)}" target="_blank">Ver</a>'
             filas.append(
                 f'<tr data-nombre="{html.escape(p.name.lower())}">'
                 f'<td class="nombre">{nombre_esc}</td>'
                 f'<td class="der">{tam}</td>'
                 f'<td class="der">{fecha}</td>'
-                f'<td><a class="descargar" href="{url}">Descargar</a></td>'
+                f'<td>{acciones}</td>'
                 f"</tr>"
             )
         cuerpo = "" if not filas else "\n".join(filas)
@@ -177,16 +188,23 @@ class Manejador(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(datos)
 
+    def _archivo_valido(self, nombre):
+        """Devuelve el Path resuelto si el archivo queda dentro de la carpeta compartida; si no, None."""
+        raiz = self.carpeta.resolve()
+        destino = (raiz / nombre).resolve()
+        # bloqueo de path traversal: el archivo debe quedar dentro de la carpeta compartida
+        if not destino.is_relative_to(raiz) or not destino.is_file():
+            return None
+        return destino
+
     def _servir_descarga(self, query):
         qs = parse_qs(query)
         nombre = unquote(qs.get("f", [""])[0])
         if not nombre:
             self.send_error(400, "Falta el parámetro 'f'")
             return
-        raiz = self.carpeta.resolve()
-        destino = (raiz / nombre).resolve()
-        # bloqueo de path traversal: el archivo debe quedar dentro de la carpeta compartida
-        if not destino.is_relative_to(raiz) or not destino.is_file():
+        destino = self._archivo_valido(nombre)
+        if destino is None:
             self.send_error(404, "Archivo no encontrado")
             return
         tipo = mimetypes.guess_type(destino.name)[0] or "application/octet-stream"
@@ -205,6 +223,28 @@ class Manejador(BaseHTTPRequestHandler):
                 if not bloque:
                     break
                 self.wfile.write(bloque)
+
+    def _servir_vista(self, query):
+        qs = parse_qs(query)
+        nombre = unquote(qs.get("f", [""])[0])
+        if not nombre:
+            self.send_error(400, "Falta el parámetro 'f'")
+            return
+        destino = self._archivo_valido(nombre)
+        if destino is None:
+            self.send_error(404, "Archivo no encontrado")
+            return
+        try:
+            texto = destino.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            self.send_error(415, "No se puede mostrar como texto")
+            return
+        datos = texto.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(datos)))
+        self.end_headers()
+        self.wfile.write(datos)
 
     def log_message(self, fmt, *args):
         print(f"[{self.client_address[0]}] {fmt % args}")
@@ -229,6 +269,9 @@ def _selftest():
                 with urllib.request.urlopen(base + "/", timeout=5) as r:
                     cuerpo = r.read().decode("utf-8")
                     assert r.status == 200 and "prueba.txt" in cuerpo, "índice sin prueba.txt"
+                    assert "/ver?f=prueba.txt" in cuerpo, "el índice no ofrece Ver para .txt"
+                with urllib.request.urlopen(base + "/ver?f=prueba.txt", timeout=5) as r:
+                    assert r.read() == b"hola mundo", "vista de texto incorrecta"
                 with urllib.request.urlopen(base + "/descargar?f=prueba.txt", timeout=5) as r:
                     assert r.read() == b"hola mundo", "contenido de descarga incorrecto"
                 with urllib.request.urlopen(base + "/descargar?f=" + quote("otro archivo.pdf"), timeout=5) as r:
@@ -243,7 +286,7 @@ def _selftest():
                     raise AssertionError("archivo inexistente debería dar 404")
                 except urllib.error.HTTPError as e:
                     assert e.code == 404
-                print("SELFTEST OK: índice, descarga, nombre con espacio, path traversal y 404 en verde.")
+                print("SELFTEST OK: índice, Ver para texto, descarga, nombre con espacio, path traversal y 404 en verde.")
                 return 0
             finally:
                 srv.shutdown()

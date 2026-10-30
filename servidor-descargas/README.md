@@ -32,7 +32,7 @@ En otros equipos de tu casa:
 
 1. Poné los archivos que quieras compartir en la carpeta compartida.
 2. Desde cualquier computadora, celular o tablet **en la misma red Wi-Fi**, abrí el navegador y entrá a `http://<IP-del-servidor>:8000`.
-3. Ves la lista de archivos con tamaño y fecha, un buscador, y un botón **Descargar** por archivo.
+3. Ves la lista de archivos con tamaño y fecha, un buscador, y por archivo un botón **Descargar** (y **Ver** para los de texto: `.txt`, `.md`, `.yml`).
 
 ## Seguridad
 
