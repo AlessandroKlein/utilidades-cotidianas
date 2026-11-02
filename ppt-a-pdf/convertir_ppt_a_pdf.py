@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-r"""Convierte todos los .ppt y .pptx de una carpeta a PDF (en la misma carpeta).
+r"""Convierte todos los PowerPoint (.ppt/.pptx/.pps/.ppsx) de una carpeta a PDF (en la misma carpeta).
 
 Uso:
     python convertir_ppt_a_pdf.py                # usa la carpeta de este script
@@ -12,7 +12,7 @@ import sys
 
 import win32com.client
 
-EXTS = (".ppt", ".pptx")
+EXTS = (".ppt", ".pptx", ".pps", ".ppsx")
 SAVE_AS_PDF = 32  # ppSaveAsPDF
 
 
@@ -26,25 +26,32 @@ def convertir(carpeta):
         if f.lower().endswith(EXTS) and not f.startswith("~$")
     )
     if not archivos:
-        print("No se encontraron archivos .ppt/.pptx en la carpeta.")
+        print("No se encontraron archivos de PowerPoint en la carpeta.")
         return 0
 
     app = win32com.client.Dispatch("PowerPoint.Application")
+    errores = 0
     try:
         for nombre in archivos:
             origen = os.path.join(carpeta, nombre)
             salida = os.path.join(carpeta, os.path.splitext(nombre)[0] + ".pdf")
-            presentacion = app.Presentations.Open(
-                origen, ReadOnly=True, Untitled=False, WithWindow=False
-            )
             try:
-                presentacion.SaveAs(salida, SAVE_AS_PDF)
-                print(f"OK: {nombre}  ->  {os.path.basename(salida)}")
-            finally:
-                presentacion.Close()
+                presentacion = app.Presentations.Open(
+                    origen, ReadOnly=True, Untitled=False, WithWindow=False
+                )
+                try:
+                    presentacion.SaveAs(salida, SAVE_AS_PDF)
+                    print(f"OK: {nombre}  ->  {os.path.basename(salida)}")
+                finally:
+                    presentacion.Close()
+            except Exception as e:
+                errores += 1
+                print(f"ERROR: {nombre}  ({e})")
     finally:
         app.Quit()
-    return 0
+
+    print(f"Listo: {len(archivos) - errores} de {len(archivos)} convertidos.")
+    return 1 if errores else 0
 
 
 if __name__ == "__main__":
