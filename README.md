@@ -11,7 +11,7 @@ Cada herramienta vive en su propia carpeta con su código y su `README.md` expli
 | [`buscar-duplicados`](buscar-duplicados/) | Encuentra archivos duplicados por contenido (hash `blake2b`) y muestra el espacio recuperable; con `--borrar` elimina las copias extra. |
 | [`office-a-markdown`](office-a-markdown/) | Convierte Office/PDF/imágenes (`.pptx`/`.docx`/`.pdf`…) a Markdown para gastar menos tokens con una IA; con GUI y OCR local opcional (minicpm-v vía ollama). |
 | [`organizar-descargas`](organizar-descargas/) | Mueve los archivos sueltos de Descargas a subcarpetas por tipo (Imágenes, Documentos, Música, Vídeos, Comprimidos, Instaladores, Otros). |
-| [`ppt-a-pdf`](ppt-a-pdf/) | Convierte todos los `.ppt` / `.pptx` de una carpeta a PDF (usa PowerPoint instalado). |
+| [`ppt-a-pdf`](ppt-a-pdf/) | Convierte todos los PowerPoint (`.ppt`/`.pptx`/`.pps`/`.ppsx`) y Word (`.doc`/`.docx`) de una carpeta a PDF (usa PowerPoint/Word instalados). |
 | [`renombrar-masivo`](renombrar-masivo/) | Renombra archivos en lote: prefijo/sufijo, numeración, buscar-reemplazar y normalización de nombres. |
 | [`servidor-descargas`](servidor-descargas/) | Comparte una carpeta por la red local: los demás equipos descargan los archivos desde el navegador. |
 
