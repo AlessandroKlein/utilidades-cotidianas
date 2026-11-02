@@ -11,11 +11,11 @@ Uso:
     python office_a_markdown.py --gui            # abre la interfaz gráfica
     python office_a_markdown.py "C:\\ruta\\carpeta"
     python office_a_markdown.py "C:\\ruta\\archivo.pptx"
-    python office_a_markdown.py --ocr "C:\\ruta" # OCR de escaneados (ollama)
+    python office_a_markdown.py --sin-ocr "C:\\ruta"  # sin OCR de escaneados
     python office_a_markdown.py -o salida "C:\\ruta"   # .md en otra carpeta
     python office_a_markdown.py --selftest       # prueba end-to-end
 
-Las imágenes y gráficos se omiten salvo con OCR (solo se extrae su texto).
+OCR de escaneados/imágenes: encendido por defecto (ollama); --sin-ocr lo apaga (--ocr es alias inofensivo).
 """
 import base64
 import json
@@ -50,7 +50,7 @@ except ImportError:
         fitz = None
         _HAS_FITZ = False
 
-POWERPOINT_EXTS = {".ppt", ".pps", ".pptx"}
+POWERPOINT_EXTS = {".ppt", ".pps", ".pptx", ".ppsx"}
 WORD_EXTS = {".doc", ".docx", ".rtf"}
 PDF_EXTS = {".pdf"}
 TEXT_EXTS = {".txt"}
@@ -370,8 +370,11 @@ def _pdf_a_markdown(origen, ocr=False):
     out = []
     for i, page in enumerate(reader.pages, 1):
         texto = (page.extract_text() or "").strip()
-        if ocr and not texto:
-            texto = _ollama_ocr(_pdf_page_png(fitz_doc, i - 1))
+        if ocr and not texto and _ollama_ok():
+            try:
+                texto = _ollama_ocr(_pdf_page_png(fitz_doc, i - 1))
+            except Exception:
+                texto = ""
         out.append("\n## Página %d\n" % i)
         out.append(texto)
     return "\n".join(out)
@@ -442,6 +445,7 @@ def _leer_texto(path):
 
 
 def convertir_uno(origen, ocr=False):
+    origen = os.path.abspath(origen)
     ext = os.path.splitext(origen)[1].lower()
     if ext in TEXT_EXTS:
         return _leer_texto(origen)
@@ -861,7 +865,7 @@ def main(argv):
     if "--gui" in argv:
         return run_gui()
 
-    ocr = "--ocr" in argv
+    ocr = "--sin-ocr" not in argv
     salida = None
     for flag in ("-o", "--salida"):
         if flag in argv:
@@ -872,7 +876,7 @@ def main(argv):
     posicionales = [a for a in argv if not a.startswith("-") and a != salida]
 
     # Sin archivo, carpeta ni salida: abrir la GUI (doble clic).
-    if not posicionales and not salida and not ocr:
+    if not posicionales and not salida:
         return run_gui()
 
     objetivo = posicionales[0] if posicionales else os.getcwd()
